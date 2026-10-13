@@ -6,7 +6,7 @@
 # box -- entrypoint.sh reads WOLFRAM_APPID at start and only writes it into
 # the persona config when set, otherwise the plugin's own demo-key fallback
 # applies. See README.md for why you want your own key for real use.
-FROM python:3.12-slim
+FROM python:3.15-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*

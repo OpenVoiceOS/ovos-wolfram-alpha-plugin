@@ -6,6 +6,9 @@ All network calls and OVOS config are mocked — no API key or daemon required.
 import unittest
 from unittest.mock import MagicMock, patch, mock_open
 
+from ovos_bus_client.message import Message
+from ovos_utils.fakebus import FakeBus
+
 from ovos_wolfram_alpha_plugin import (
     WolframAlphaApi,
     WolframAlphaRetrievalEngine,
@@ -188,21 +191,28 @@ class TestWolframAlphaToolbox(unittest.TestCase):
         self.assertTrue(tb.tools)
 
     def test_constructor_forwards_bus_so_bind_actually_runs(self):
-        # Passing bus=None (as the loader does when it has no bus of its own)
-        # must not crash, and passing a real bus must reach ToolBox.bind(),
-        # which is only possible now that __init__ forwards it to super().
-        calls = []
-
-        class FakeBus:
-            def on(self, topic, handler):
-                calls.append(topic)
-
+        # Passing a bus to __init__ must reach ToolBox.bind(), so the toolbox
+        # answers the OVOS-TOOLS-1 topics with real values: discover lists the
+        # tools of this toolbox, and a call runs the tool and returns its result.
+        bus = FakeBus()
         with patch("ovos_wolfram_alpha_plugin.WolframAlphaApi"):
-            tb = WolframAlphaToolbox(config={"appid": "TEST"}, bus=FakeBus())
-        self.assertEqual(sorted(calls), sorted([
-            "ovos.persona.tools.discover",
-            f"ovos.persona.tools.{tb.toolbox_id}.call",
-        ]))
+            tb = WolframAlphaToolbox(config={"appid": "TEST"}, bus=bus)
+        tb.api = MagicMock()
+        tb.api.llm.return_value = "42"
+        replies = []
+        bus.on("ovos.persona.tools.discover.response", lambda m: replies.append(m.data))
+        bus.on(f"ovos.persona.tools.{tb.toolbox_id}.call.response", lambda m: replies.append(m.data))
+
+        bus.emit(Message("ovos.persona.tools.discover"))
+        bus.emit(Message(f"ovos.persona.tools.{tb.toolbox_id}.call",
+                         {"name": "search_wolfram_alpha",
+                          "kwargs": {"query": "meaning of life", "units": "imperial"}}))
+
+        discovered, called = replies
+        self.assertEqual(discovered["toolbox_id"], "ovos-wolfram-alpha-tools")
+        self.assertEqual([t["name"] for t in discovered["tools"]], ["search_wolfram_alpha"])
+        self.assertEqual(called["result"]["result"], "42")
+        tb.api.llm.assert_called_once_with(query="meaning of life", units="imperial")
 
 
 # ---------------------------------------------------------------------------

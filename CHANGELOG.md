@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.2a2](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/tree/1.1.2a2) (2026-10-19)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/compare/1.1.2a1...1.1.2a2)
+
+**Merged pull requests:**
+
+- test: assert the toolbox bus contract by its answers [\#34](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/pull/34) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.1.2a1](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/tree/1.1.2a1) (2026-09-01)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/compare/1.1.1a1...1.1.2a1)

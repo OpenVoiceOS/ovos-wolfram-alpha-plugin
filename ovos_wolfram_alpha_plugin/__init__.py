@@ -25,18 +25,26 @@ from ovos_plugin_manager.language import load_tx_plugin
 
 
 class WolframAlphaApi:
+    # Seconds to wait for the server between bytes (requests applies it to each
+    # socket read, not to the whole request). A stalled connection must not hold
+    # a bus handler forever. Above the 20 s server-side totaltimeout of the
+    # llm and full results endpoints, so a slow valid answer arrives.
+    REQUEST_TIMEOUT: float = 25
+    # The spoken endpoint gives up on the server side after 5 s by default, and
+    # a voice user is waiting for the answer.
+    SPOKEN_TIMEOUT: float = 10
+
     def __init__(self, key: str):
         self.key = key or "Y7R353-9HQAAL8KKA"
 
-    @staticmethod
-    def _request(url: str, params: dict) -> requests.Response:
+    def _request(self, url: str, params: dict, timeout: Optional[float] = None) -> requests.Response:
         """GET *url*; a failed request raises with the query string left out.
 
         requests writes the full URL into the text of a connection error, and
         the query string carries the appid and the user's location.
         """
         try:
-            return requests.get(url, params=params)
+            return requests.get(url, params=params, timeout=timeout or self.REQUEST_TIMEOUT)
         except requests.RequestException as e:
             error = type(e)(f"{type(e).__name__} for {url}")
         # raised outside the except block, so the original error is not chained
@@ -62,7 +70,7 @@ class WolframAlphaApi:
                   "appid": self.key,
                   **optional_params}
         url = 'https://api.wolframalpha.com/v1/spoken'
-        response = self._request(url, params)
+        response = self._request(url, params, timeout=self.SPOKEN_TIMEOUT)
         # 501 is the API's "no answer" reply; its body says so in plain words.
         # The request URL carries the appid and the user's location, so the
         # error names only the status.

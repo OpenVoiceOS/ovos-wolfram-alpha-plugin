@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.4a1](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/tree/1.1.4a1) (2026-10-20)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/compare/1.1.3a1...1.1.4a1)
+
+**Merged pull requests:**
+
+- fix: stop waiting on a silent Wolfram Alpha server [\#37](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/pull/37) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.1.3a1](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/tree/1.1.3a1) (2026-10-20)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/compare/1.1.2a2...1.1.3a1)

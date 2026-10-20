@@ -6,6 +6,7 @@ All network calls and OVOS config are mocked — no API key or daemon required.
 import unittest
 from unittest.mock import MagicMock, patch, mock_open
 
+import requests
 from ovos_bus_client.message import Message
 from ovos_utils.fakebus import FakeBus
 
@@ -227,6 +228,117 @@ class TestPluginLoading(unittest.TestCase):
             WolframAlphaRetrievalEngine,
             WolframAlphaToolbox,
         )
+
+
+# ---------------------------------------------------------------------------
+# API errors
+# ---------------------------------------------------------------------------
+
+SECRET_APPID = "SECRET-APPID-123"
+REASONS = {400: "Bad Request", 401: "Unauthorized", 403: "Forbidden"}
+
+
+def _http_response(status: int, text: str) -> requests.Response:
+    response = requests.Response()
+    response.status_code = status
+    response.reason = REASONS.get(status, "Not Implemented")
+    response._content = text.encode()
+    # the real request URL carries the key and the user's location
+    response.url = ("https://api.wolframalpha.com/v1/llm-api?input=2%2B2"
+                    f"&geolocation=38.7,-9.1&appid={SECRET_APPID}")
+    return response
+
+
+class TestWolframAlphaApiErrors(unittest.TestCase):
+    # The API answers a refused key with "403 Blocked request". That page is
+    # an error, never an answer for the user or the model.
+
+    def test_llm_and_spoken_raise_on_a_refused_request(self):
+        # 400: missing key, 401: invalid key, 403: refused key
+        api = WolframAlphaApi(key=SECRET_APPID)
+        for status in (400, 401, 403):
+            for call in (api.llm, api.spoken):
+                with self.subTest(status=status, call=call.__name__), \
+                        patch("ovos_wolfram_alpha_plugin.requests.get",
+                              return_value=_http_response(status, "Blocked request")):
+                    with self.assertRaises(requests.HTTPError) as raised:
+                        call("2+2", lat_lon=(0, 0))
+                    self.assertEqual(raised.exception.response.status_code, status)
+                    self.assertNotIn(SECRET_APPID, str(raised.exception))
+                    self.assertNotIn("38.7", str(raised.exception))
+
+    def test_connection_errors_never_carry_the_key(self):
+        # requests puts the full URL, query string included, into the text of
+        # a connection error. The URL carries the appid and the geolocation.
+        url = ("https://api.wolframalpha.com/v1/llm-api?input=2%2B2"
+               f"&geolocation=38.7,-9.1&appid={SECRET_APPID}")
+        api = WolframAlphaApi(key=SECRET_APPID)
+        for error_type in (requests.ConnectionError, requests.ConnectTimeout, requests.exceptions.ProxyError):
+            for call in (api.llm, api.spoken):
+                error = error_type(f"HTTPSConnectionPool: Max retries exceeded with url: {url}")
+                with self.subTest(error=error_type.__name__, call=call.__name__), \
+                        patch("ovos_wolfram_alpha_plugin.requests.get", side_effect=error):
+                    with self.assertRaises(error_type) as raised:
+                        call("2+2", lat_lon=(38.7, -9.1))
+                    chain, seen = [], raised.exception
+                    while seen is not None:
+                        chain.append(seen)
+                        seen = seen.__cause__ or seen.__context__
+                    for link in chain:
+                        self.assertNotIn(SECRET_APPID, str(link))
+                        self.assertNotIn(SECRET_APPID, repr(link))
+                        self.assertNotIn("38.7", str(link))
+
+    def test_engine_log_never_shows_the_key(self):
+        refusals = [_http_response(401, "Invalid appid"),
+                    requests.ConnectionError(
+                        "Max retries exceeded with url: /v1/spoken?i=2%2B2"
+                        f"&geolocation=38.7,-9.1&appid={SECRET_APPID}")]
+        for refusal in refusals:
+            with patch("ovos_wolfram_alpha_plugin.WolframAlphaApi"):
+                engine = WolframAlphaRetrievalEngine(config={"appid": SECRET_APPID}, translator=MagicMock())
+            engine.api = WolframAlphaApi(key=SECRET_APPID)
+            get = {"return_value": refusal} if isinstance(refusal, requests.Response) \
+                else {"side_effect": refusal}
+            with self.subTest(refusal=type(refusal).__name__), \
+                    patch("ovos_wolfram_alpha_plugin.requests.get", **get), \
+                    patch.object(WolframAlphaApi, "_get_lat_lon", return_value=(38.7, -9.1)), \
+                    patch("ovos_wolfram_alpha_plugin.LOG") as log:
+                self.assertEqual(engine.query("what is 2+2", lang="en-us"), [])
+            logged = " ".join(str(arg) for c in log.method_calls for arg in c.args)
+            self.assertTrue(logged)
+            self.assertNotIn(SECRET_APPID, logged)
+            self.assertNotIn("38.7", logged)
+
+    def test_llm_returns_the_no_answer_text(self):
+        api = WolframAlphaApi(key="TEST")
+        with patch("ovos_wolfram_alpha_plugin.requests.get",
+                   return_value=_http_response(501, "Wolfram|Alpha did not understand your input")):
+            self.assertEqual(api.llm("xyzzy", lat_lon=(0, 0)),
+                             "Wolfram|Alpha did not understand your input")
+
+    def test_engine_gives_no_answer_on_a_refused_request(self):
+        with patch("ovos_wolfram_alpha_plugin.WolframAlphaApi"):
+            engine = WolframAlphaRetrievalEngine(config={"appid": "TEST"}, translator=MagicMock())
+        engine.api = WolframAlphaApi(key="TEST")
+        with patch("ovos_wolfram_alpha_plugin.requests.get",
+                   return_value=_http_response(403, "Blocked request")):
+            self.assertEqual(engine.query("what is 2+2", lang="en-us"), [])
+
+    def test_tool_call_reports_a_refused_request_as_an_error(self):
+        bus = FakeBus()
+        with patch("ovos_wolfram_alpha_plugin.WolframAlphaApi"):
+            tb = WolframAlphaToolbox(config={"appid": "TEST"}, bus=bus)
+        tb.api = WolframAlphaApi(key="TEST")
+        replies = []
+        bus.on(f"ovos.persona.tools.{tb.toolbox_id}.call.response", lambda m: replies.append(m.data))
+        with patch("ovos_wolfram_alpha_plugin.requests.get",
+                   return_value=_http_response(403, "Blocked request")), \
+                patch.object(WolframAlphaApi, "_get_lat_lon", return_value=(0, 0)):
+            bus.emit(Message(f"ovos.persona.tools.{tb.toolbox_id}.call",
+                             {"name": "search_wolfram_alpha", "kwargs": {"query": "2+2"}}))
+        self.assertNotIn("result", replies[0])
+        self.assertIn("search_wolfram_alpha", replies[0]["error"])
 
 
 if __name__ == "__main__":

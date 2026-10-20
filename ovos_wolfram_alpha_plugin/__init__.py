@@ -29,6 +29,20 @@ class WolframAlphaApi:
         self.key = key or "Y7R353-9HQAAL8KKA"
 
     @staticmethod
+    def _request(url: str, params: dict) -> requests.Response:
+        """GET *url*; a failed request raises with the query string left out.
+
+        requests writes the full URL into the text of a connection error, and
+        the query string carries the appid and the user's location.
+        """
+        try:
+            return requests.get(url, params=params)
+        except requests.RequestException as e:
+            error = type(e)(f"{type(e).__name__} for {url}")
+        # raised outside the except block, so the original error is not chained
+        raise error
+
+    @staticmethod
     def _get_lat_lon(**kwargs):
         lat = kwargs.get("latitude") or kwargs.get("lat")
         lon = kwargs.get("longitude") or kwargs.get("lon") or kwargs.get("lng")
@@ -48,7 +62,13 @@ class WolframAlphaApi:
                   "appid": self.key,
                   **optional_params}
         url = 'https://api.wolframalpha.com/v1/spoken'
-        return requests.get(url, params=params).text
+        response = self._request(url, params)
+        # 501 is the API's "no answer" reply; its body says so in plain words.
+        # The request URL carries the appid and the user's location, so the
+        # error names only the status.
+        if not response.ok and response.status_code != 501:
+            raise requests.HTTPError(f"{response.status_code} {response.reason}", response=response)
+        return response.text
 
     def simple(self, query, units="metric", lat_lon=None, optional_params=None):
         optional_params = optional_params or {}
@@ -60,7 +80,7 @@ class WolframAlphaApi:
                   "appid": self.key,
                   **optional_params}
         url = 'https://api.wolframalpha.com/v1/simple'
-        return requests.get(url, params=params).text
+        return self._request(url, params).text
 
     def query_recognizer(self, query, units="metric", lat_lon=None, optional_params=None):
         optional_params = optional_params or {}
@@ -72,7 +92,7 @@ class WolframAlphaApi:
         url = 'https://www.wolframalpha.com/queryrecognizer/query.jsp'
         # TODO - {"status":401,"message":"Not permitted"}
         # what am i doin wrong? https://products.wolframalpha.com/query-recognizer/documentation
-        return requests.get(url, params=params).json()
+        return self._request(url, params).json()
 
     def llm(self, query, units="metric", lat_lon=None, optional_params=None):
         optional_params = optional_params or {}
@@ -84,7 +104,13 @@ class WolframAlphaApi:
                   "appid": self.key,
                   **optional_params}
         url = 'https://api.wolframalpha.com/v1/llm-api'
-        return requests.get(url, params=params).text
+        response = self._request(url, params)
+        # 501 is the API's "no answer" reply; its body says so in plain words.
+        # The request URL carries the appid and the user's location, so the
+        # error names only the status.
+        if not response.ok and response.status_code != 501:
+            raise requests.HTTPError(f"{response.status_code} {response.reason}", response=response)
+        return response.text
 
     def full_results(self, query, units="metric", lat_lon=None, optional_params=None):
         """Wrapper for the WolframAlpha Full Results v2 API.
@@ -105,7 +131,7 @@ class WolframAlphaApi:
                   "appid": self.key,
                   **optional_params}
         url = 'https://api.wolframalpha.com/v2/query'
-        data = requests.get(url, params=params)
+        data = self._request(url, params)
         return data.json()
 
     def get_image(self, query: str, units: Optional[str] = None):
@@ -119,7 +145,7 @@ class WolframAlphaApi:
                   "units": units}
         path = join(tempfile.gettempdir(), query.replace(" ", "_") + ".gif")
         if not isfile(path):
-            image = requests.get(url, params=params).content
+            image = self._request(url, params).content
             with open(path, "wb") as f:
                 f.write(image)
         return path
@@ -156,7 +182,13 @@ class WolframAlphaRetrievalEngine(RetrievalEngine):
             List of (content, score) tuples, or empty list if no answer.
         """
         units = self.config.get("units") or Configuration().get("system_unit", "metric")
-        answer = self.get_spoken_answer(query, lang, units)
+        try:
+            answer = self.get_spoken_answer(query, lang, units)
+        except requests.RequestException as e:
+            # str(e) can hold the request URL, which carries the appid
+            status = f" {e.response.status_code}" if e.response is not None else ""
+            LOG.error(f"Wolfram Alpha request failed: {type(e).__name__}{status}")
+            return []
         if answer:
             # TODO - use query recognizer to get a confidence level
             return [(answer, 0.9)]

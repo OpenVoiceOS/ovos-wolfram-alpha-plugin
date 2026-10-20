@@ -3,6 +3,9 @@ Unit tests for ovos-wolfram-alpha-plugin.
 
 All network calls and OVOS config are mocked — no API key or daemon required.
 """
+import os
+import socket
+import threading
 import unittest
 from unittest.mock import MagicMock, patch, mock_open
 
@@ -339,6 +342,77 @@ class TestWolframAlphaApiErrors(unittest.TestCase):
                              {"name": "search_wolfram_alpha", "kwargs": {"query": "2+2"}}))
         self.assertNotIn("result", replies[0])
         self.assertIn("search_wolfram_alpha", replies[0]["error"])
+
+
+class TestWolframAlphaStalledConnection(unittest.TestCase):
+    # A server that accepts the connection and never answers must not hold the
+    # caller forever: a bus handler that waits on it never answers again.
+
+    def setUp(self):
+        self.server = socket.socket()
+        self.server.bind(("127.0.0.1", 0))
+        self.server.listen(5)
+        proxy = f"http://127.0.0.1:{self.server.getsockname()[1]}"
+        self.env = patch.dict(os.environ, {"HTTPS_PROXY": proxy, "HTTP_PROXY": proxy, "NO_PROXY": ""})
+        self.env.start()
+
+    def tearDown(self):
+        self.env.stop()
+        self.server.close()
+
+    def test_engine_gives_up_on_a_silent_server(self):
+        with patch("ovos_wolfram_alpha_plugin.WolframAlphaApi"):
+            engine = WolframAlphaRetrievalEngine(config={"appid": "TEST"}, translator=MagicMock())
+        engine.api = WolframAlphaApi(key="TEST")
+        engine.api.SPOKEN_TIMEOUT = 0.5
+        result = {}
+        with patch.object(WolframAlphaApi, "_get_lat_lon", return_value=(0, 0)):
+            worker = threading.Thread(
+                target=lambda: result.update(answer=engine.query("what is 2+2", lang="en-us")),
+                daemon=True)
+            worker.start()
+            worker.join(10)
+        self.assertFalse(worker.is_alive(), "the spoken request still waits after 10 s")
+        self.assertEqual(result["answer"], [])
+
+    def test_tool_call_gives_up_on_a_silent_server(self):
+        bus = FakeBus()
+        with patch("ovos_wolfram_alpha_plugin.WolframAlphaApi"):
+            tb = WolframAlphaToolbox(config={"appid": "TEST"}, bus=bus)
+        tb.api = WolframAlphaApi(key="TEST")
+        tb.api.REQUEST_TIMEOUT = 0.5
+        replies = []
+        bus.on(f"ovos.persona.tools.{tb.toolbox_id}.call.response", lambda m: replies.append(m.data))
+        call = Message(f"ovos.persona.tools.{tb.toolbox_id}.call",
+                       {"name": "search_wolfram_alpha", "kwargs": {"query": "2+2"}})
+        with patch.object(WolframAlphaApi, "_get_lat_lon", return_value=(0, 0)):
+            worker = threading.Thread(target=bus.emit, args=(call,), daemon=True)
+            worker.start()
+            worker.join(10)
+        self.assertFalse(worker.is_alive(), "the request still waits after 10 s")
+        self.assertIn("error", replies[0])
+
+
+class TestWolframAlphaEndpointTimeouts(unittest.TestCase):
+
+    def _timeout_passed_to_get(self, call):
+        response = MagicMock(ok=True, text="ok")
+        response.json.return_value = {}
+        with patch("ovos_wolfram_alpha_plugin.requests.get", return_value=response) as get:
+            call(WolframAlphaApi(key="TEST"))
+        return get.call_args.kwargs["timeout"]
+
+    def test_spoken_waits_10_seconds(self):
+        self.assertEqual(self._timeout_passed_to_get(
+            lambda api: api.spoken("2+2", lat_lon=(0, 0))), 10)
+
+    def test_llm_waits_25_seconds(self):
+        self.assertEqual(self._timeout_passed_to_get(
+            lambda api: api.llm("2+2", lat_lon=(0, 0))), 25)
+
+    def test_full_results_waits_25_seconds(self):
+        self.assertEqual(self._timeout_passed_to_get(
+            lambda api: api.full_results("2+2", lat_lon=(0, 0))), 25)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.3a1](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/tree/1.1.3a1) (2026-10-20)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/compare/1.1.2a2...1.1.3a1)
+
+**Merged pull requests:**
+
+- fix: a refused Wolfram Alpha request is an error, not an answer [\#36](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/pull/36) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
 ## [1.1.2a2](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/tree/1.1.2a2) (2026-10-19)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/compare/1.1.2a1...1.1.2a2)

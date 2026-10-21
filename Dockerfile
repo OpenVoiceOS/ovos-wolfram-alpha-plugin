@@ -4,7 +4,7 @@
 # built-in key: entrypoint.sh reads WOLFRAM_APPID at start and writes it into
 # the persona config. Without it, the plugin logs that no appid is configured
 # and every query returns no answer. See README.md.
-FROM python:3.12-slim
+FROM python:3.15-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*

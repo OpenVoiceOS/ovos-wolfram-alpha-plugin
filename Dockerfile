@@ -1,11 +1,9 @@
 # ovos-persona-server serving a persona backed by this plugin's retrieval
 # engine (opm.agents.retrieval, WolframAlphaRetrievalEngine). Every request
-# hits api.wolframalpha.com and needs an "appid" key. The plugin itself
-# bundles a shared demo key and falls back to it when none is configured
-# (ovos_wolfram_alpha_plugin/__init__.py), so this image works out of the
-# box -- entrypoint.sh reads WOLFRAM_APPID at start and only writes it into
-# the persona config when set, otherwise the plugin's own demo-key fallback
-# applies. See README.md for why you want your own key for real use.
+# hits api.wolframalpha.com and needs an "appid" key. The plugin has no
+# built-in key: entrypoint.sh reads WOLFRAM_APPID at start and writes it into
+# the persona config. Without it, the plugin logs that no appid is configured
+# and every query returns no answer. See README.md.
 FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends curl \

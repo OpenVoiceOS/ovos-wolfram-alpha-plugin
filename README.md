@@ -8,7 +8,7 @@
 
 Wolfram Alpha excels at questions with a single definitive answer: maths, unit conversions, scientific constants, chemical properties, astronomy, nutrition, geography, and historical dates. It is not a search engine. It computes answers from curated data.
 
-An [API key](https://products.wolframalpha.com/api/) is required. A demo key is bundled for development but is rate-limited and should not be used in production.
+An [API key](https://products.wolframalpha.com/api/) is required. Set it as `appid` in the plugin config. The plugin has no built-in key: without an `appid` it logs an error and returns no answer.
 
 ---
 
@@ -155,13 +155,11 @@ print(output.result)
 This repo publishes `ghcr.io/openvoiceos/ovos-wolfram-alpha-plugin`, a
 standalone `ovos-persona-server` that serves one persona, `WolframBot`,
 backed by the `WolframAlphaRetrievalEngine` in this plugin. Every query hits
-`api.wolframalpha.com` and needs an `appid`. If you do not set one, the
-container falls back to the demo `appid` bundled in this plugin, so it works
-with no configuration at all. That demo key is shared by every user of this
-plugin and is rate limited -- fine to try the image out, not fine for real
-traffic. Get your own free `appid` from
-[the Wolfram developer portal](https://developer.wolframalpha.com/) and pass
-it as `WOLFRAM_APPID`:
+`api.wolframalpha.com` and needs an `appid`. The plugin has no built-in
+`appid`. If `WOLFRAM_APPID` is not set, the container starts and logs that no
+`appid` is configured, and every query returns no answer. Get your own free
+`appid` from [the Wolfram developer portal](https://developer.wolframalpha.com/)
+and pass it as `WOLFRAM_APPID`:
 
 ```bash
 docker run -p 8392:8337 -e WOLFRAM_APPID=your-appid-here \
@@ -174,17 +172,6 @@ curl http://localhost:8392/v1/chat/completions \
     -H "Content-Type: application/json" \
     -d '{"model": "WolframBot", "messages": [{"role": "user", "content": "distance from earth to the moon"}]}'
 ```
-
-Known issue as of `ovos-persona` 0.9.0a9 through 0.9.0a16 (the latest published
-alpha): `Persona.chat` passes `sess.lang` and `sess.system_unit` into
-`chat_completion` in the wrong order, so the retrieval engine receives the
-unit string (`"metric"`) where it expects a language code, and the request
-above answers `500 Internal Server Error` with `Persona chat failed:
-'NoneType' object has no attribute 'split'`. This is a bug in `ovos-persona`
-itself, not in this plugin or this image -- calling
-`WolframAlphaRetrievalEngine().query(...)` directly, with the bundled demo
-key, returns a correct answer. It will clear up once a fixed `ovos-persona`
-is published; there is nothing to configure around it from this image.
 
 A compose snippet:
 

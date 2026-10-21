@@ -24,6 +24,14 @@ from ovos_utils.log import LOG
 from ovos_plugin_manager.language import load_tx_plugin
 
 
+NO_APPID_MESSAGE = ("No Wolfram Alpha appid is configured. Get a free appid at "
+                    "https://developer.wolframalpha.com/ and set it as \"appid\" in the plugin config.")
+
+
+class MissingAppIdError(ValueError):
+    """Raised when a request needs an appid and none is configured."""
+
+
 class WolframAlphaApi:
     # Seconds to wait for the server between bytes (requests applies it to each
     # socket read, not to the whole request). A stalled connection must not hold
@@ -35,7 +43,7 @@ class WolframAlphaApi:
     SPOKEN_TIMEOUT: float = 10
 
     def __init__(self, key: str):
-        self.key = key or "Y7R353-9HQAAL8KKA"
+        self.key = key
 
     def _request(self, url: str, params: dict, timeout: Optional[float] = None) -> requests.Response:
         """GET *url*; a failed request raises with the query string left out.
@@ -43,6 +51,8 @@ class WolframAlphaApi:
         requests writes the full URL into the text of a connection error, and
         the query string carries the appid and the user's location.
         """
+        if not self.key:
+            raise MissingAppIdError(NO_APPID_MESSAGE)
         try:
             return requests.get(url, params=params, timeout=timeout or self.REQUEST_TIMEOUT)
         except requests.RequestException as e:
@@ -162,7 +172,9 @@ class WolframAlphaApi:
 class WolframAlphaRetrievalEngine(RetrievalEngine):
     def __init__(self, config=None, translator: Optional[LanguageTranslator] = None):
         super().__init__(config=config)
-        self.api = WolframAlphaApi(key=self.config.get("appid") or "Y7R353-9HQAAL8KKA")
+        self.api = WolframAlphaApi(key=self.config.get("appid"))
+        if not self.api.key:
+            LOG.error(NO_APPID_MESSAGE)
         self.translator: Optional[LanguageTranslator] = translator
         if not translator:
             self._load_translator()
@@ -192,6 +204,9 @@ class WolframAlphaRetrievalEngine(RetrievalEngine):
         units = self.config.get("units") or Configuration().get("system_unit", "metric")
         try:
             answer = self.get_spoken_answer(query, lang, units)
+        except MissingAppIdError as e:
+            LOG.error(e)
+            return []
         except requests.RequestException as e:
             # str(e) can hold the request URL, which carries the appid
             status = f" {e.response.status_code}" if e.response is not None else ""
@@ -365,7 +380,9 @@ class WolframAlphaToolbox(ToolBox):
             bus: The OVOS Messagebus client instance, passed through to ToolBox.
         """
         self.config = config or {}
-        self.api = WolframAlphaApi(key=self.config.get("appid") or "Y7R353-9HQAAL8KKA")
+        self.api = WolframAlphaApi(key=self.config.get("appid"))
+        if not self.api.key:
+            LOG.error(NO_APPID_MESSAGE)
         super().__init__(toolbox_id=self.toolbox_id, config=config, bus=bus)
 
     def search_wolfram(self, args: SearchWolframAlphaArgs) -> SearchWolframAlphaOutput:

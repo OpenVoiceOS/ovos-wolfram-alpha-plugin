@@ -14,6 +14,8 @@ from ovos_bus_client.message import Message
 from ovos_utils.fakebus import FakeBus
 
 from ovos_wolfram_alpha_plugin import (
+    NO_APPID_MESSAGE,
+    MissingAppIdError,
     WolframAlphaApi,
     WolframAlphaRetrievalEngine,
     WolframAlphaToolbox,
@@ -34,9 +36,13 @@ class TestWolframAlphaApi(unittest.TestCase):
     def test_key_stored(self):
         self.assertEqual(self.api.key, "TEST-KEY")
 
-    def test_default_key_used_when_falsy(self):
+    def test_no_key_means_no_request(self):
         api = WolframAlphaApi(key=None)
-        self.assertEqual(api.key, "Y7R353-9HQAAL8KKA")
+        with patch("ovos_wolfram_alpha_plugin.requests.get") as get, \
+                self.assertRaises(MissingAppIdError) as raised:
+            api.spoken("2+2", lat_lon=(0, 0))
+        get.assert_not_called()
+        self.assertIn("No Wolfram Alpha appid is configured", str(raised.exception))
 
     def _mock_get(self, text="answer"):
         m = MagicMock()
@@ -391,6 +397,42 @@ class TestWolframAlphaStalledConnection(unittest.TestCase):
             worker.join(10)
         self.assertFalse(worker.is_alive(), "the request still waits after 10 s")
         self.assertIn("error", replies[0])
+
+
+class TestNoAppId(unittest.TestCase):
+
+    def test_engine_without_appid_logs_and_gives_no_answer_without_a_request(self):
+        with patch("ovos_wolfram_alpha_plugin.LOG") as log:
+            engine = WolframAlphaRetrievalEngine(config={}, translator=MagicMock())
+            self.assertIsNone(engine.api.key)
+            self.assertIn("No Wolfram Alpha appid is configured", str(log.error.call_args_list[0]))
+            with patch("ovos_wolfram_alpha_plugin.requests.get") as get, \
+                    patch("ovos_wolfram_alpha_plugin.Configuration", return_value={}), \
+                    patch.object(WolframAlphaApi, "_get_lat_lon", return_value=(0, 0)):
+                self.assertEqual(engine.query("what is 2+2", lang="en-us"), [])
+        get.assert_not_called()
+        self.assertEqual(log.error.call_count, 2)
+
+    def test_toolbox_without_appid_reports_an_error_without_a_request(self):
+        bus = FakeBus()
+        with patch("ovos_wolfram_alpha_plugin.LOG") as log:
+            tb = WolframAlphaToolbox(config={}, bus=bus)
+        self.assertIsNone(tb.api.key)
+        log.error.assert_called_once_with(NO_APPID_MESSAGE)
+        replies = []
+        bus.on(f"ovos.persona.tools.{tb.toolbox_id}.call.response", lambda m: replies.append(m.data))
+        with patch("ovos_wolfram_alpha_plugin.requests.get") as get, \
+                patch.object(WolframAlphaApi, "_get_lat_lon", return_value=(0, 0)):
+            bus.emit(Message(f"ovos.persona.tools.{tb.toolbox_id}.call",
+                             {"name": "search_wolfram_alpha", "kwargs": {"query": "2+2"}}))
+        get.assert_not_called()
+        self.assertNotIn("result", replies[0])
+        self.assertIn("search_wolfram_alpha", replies[0]["error"])
+        with patch("ovos_wolfram_alpha_plugin.requests.get") as get, \
+                patch.object(WolframAlphaApi, "_get_lat_lon", return_value=(0, 0)), \
+                self.assertRaises(MissingAppIdError):
+            tb.search_wolfram(SearchWolframAlphaArgs(query="2+2"))
+        get.assert_not_called()
 
 
 class TestWolframAlphaEndpointTimeouts(unittest.TestCase):

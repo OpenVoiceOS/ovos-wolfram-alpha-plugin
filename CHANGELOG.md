@@ -1,12 +1,100 @@
 # Changelog
 
-## [0.0.4a1](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-solver/tree/0.0.4a1) (2025-11-05)
+## [1.1.5a1](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/tree/1.1.5a1) (2026-10-21)
 
-[Full Changelog](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-solver/compare/0.0.3...0.0.4a1)
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/compare/1.1.4a1...1.1.5a1)
 
 **Merged pull requests:**
 
-- Update ovos-plugin-manager version range [\#5](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-solver/pull/5) ([JarbasAl](https://github.com/JarbasAl))
+- fix: do not fall back to a bundled appid [\#40](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/pull/40) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.1.4a1](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/tree/1.1.4a1) (2026-10-20)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/compare/1.1.3a1...1.1.4a1)
+
+**Merged pull requests:**
+
+- fix: stop waiting on a silent Wolfram Alpha server [\#37](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/pull/37) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.1.3a1](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/tree/1.1.3a1) (2026-10-20)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/compare/1.1.2a2...1.1.3a1)
+
+**Merged pull requests:**
+
+- fix: a refused Wolfram Alpha request is an error, not an answer [\#36](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/pull/36) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.1.2a2](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/tree/1.1.2a2) (2026-10-19)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/compare/1.1.2a1...1.1.2a2)
+
+**Merged pull requests:**
+
+- test: assert the toolbox bus contract by its answers [\#34](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/pull/34) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
+
+## [1.1.2a1](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/tree/1.1.2a1) (2026-09-01)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/compare/1.1.1a1...1.1.2a1)
+
+**Merged pull requests:**
+
+- fix: allow ovos-config 3.x [\#32](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/pull/32) ([JarbasAl](https://github.com/JarbasAl))
+
+## [1.1.1a1](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/tree/1.1.1a1) (2026-08-14)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/compare/1.1.0a1...1.1.1a1)
+
+**Merged pull requests:**
+
+- fix: WolframAlphaToolbox constructor rejects the OPM ToolBox loader call [\#30](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/pull/30) ([JarbasAl](https://github.com/JarbasAl))
+
+## [1.1.0a1](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/tree/1.1.0a1) (2026-08-14)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/compare/1.0.0a3...1.1.0a1)
+
+**Merged pull requests:**
+
+- feat: publish a docker image for a ready-to-run WolframBot persona [\#27](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/pull/27) ([JarbasAl](https://github.com/JarbasAl))
+
+## [1.0.0a3](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/tree/1.0.0a3) (2026-08-01)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/compare/1.0.0a2...1.0.0a3)
+
+**Merged pull requests:**
+
+- docs: rewrite README in Simplified Technical English [\#25](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/pull/25) ([JarbasAl](https://github.com/JarbasAl))
+
+## [1.0.0a2](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/tree/1.0.0a2) (2026-04-21)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/compare/1.0.0a1...1.0.0a2)
+
+**Merged pull requests:**
+
+- Update ovos-config dependency version range [\#22](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/pull/22) ([JarbasAl](https://github.com/JarbasAl))
+
+## [1.0.0a1](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/tree/1.0.0a1) (2026-04-20)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/compare/0.0.5a2...1.0.0a1)
+
+**Breaking changes:**
+
+- feat!: add toolbox, add llm api, add CI workflows, tests and README [\#19](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/pull/19) ([JarbasAl](https://github.com/JarbasAl))
+
+## [0.0.5a2](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/tree/0.0.5a2) (2025-12-19)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/compare/0.0.5a1...0.0.5a2)
+
+**Merged pull requests:**
+
+- chore\(deps\): update dependency python to 3.14 [\#8](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/pull/8) ([renovate[bot]](https://github.com/apps/renovate))
+
+## [0.0.5a1](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/tree/0.0.5a1) (2025-12-18)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/compare/0.0.4...0.0.5a1)
+
+**Merged pull requests:**
+
+- chore: Configure Renovate [\#7](https://github.com/OpenVoiceOS/ovos-wolfram-alpha-plugin/pull/7) ([renovate[bot]](https://github.com/apps/renovate))
 
 
 
